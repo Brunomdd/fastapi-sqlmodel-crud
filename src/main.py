@@ -4,15 +4,15 @@ from fastapi import FastAPI,Depends
 from sqlmodel import Field,create_engine,Session,SQLModel
 from pydantic import EmailStr
 
-
 class PessoaBase(SQLModel):
     nome:str | None = Field(default=None,index=True)
     idade:int | None = Field(default=None)
+    
   
     
-
 class Pessoa(PessoaBase,table=True):
     id:int | None = Field(default=None,primary_key=True)
+    email:EmailStr
 
 class CriarPessoa(PessoaBase):
     email:EmailStr
@@ -20,10 +20,6 @@ class CriarPessoa(PessoaBase):
 
 class PessoaPublica(PessoaBase):
     id:int
-
-
-
-
 
 
 sql_name = "banco.db"

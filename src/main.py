@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
-from fastapi import FastAPI,Depends
-from sqlmodel import Field,create_engine,Session,SQLModel
+from fastapi import FastAPI,Depends,Query
+from sqlmodel import Field,create_engine,Session,SQLModel,select
 from pydantic import EmailStr
 
 class PessoaBase(SQLModel):
@@ -46,13 +46,21 @@ app = FastAPI(lifespan=lifespan,title='API')
 SessionDP = Annotated[Session,Depends(get_session)]
 
 
-@app.post("/criar/",tags=['Criando usuário'],response_model=PessoaPublica)
+@app.post("/criar/",tags=['Criar usuário'],response_model=PessoaPublica)
 def criar_usuario(pessoa:CriarPessoa,session:SessionDP):
     validar = Pessoa.model_validate(pessoa)
     session.add(validar)
     session.commit()
     session.refresh(validar)
     return validar
+
+@app.get("/listar/usuarios",tags=['Listar Usuários'],response_model=list[PessoaPublica])
+def listar_todos(session:SessionDP,offset:int=0,limit:Annotated[int,Query(le=100)] = 100):
+    pessoas = session.exec(select(Pessoa).offset(offset).limit(limit)).all()
+    return pessoas
+
+
+
 
 
 

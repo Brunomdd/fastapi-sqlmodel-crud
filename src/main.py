@@ -2,6 +2,29 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import FastAPI,Depends
 from sqlmodel import Field,create_engine,Session,SQLModel
+from pydantic import EmailStr
+
+
+class PessoaBase(SQLModel):
+    nome:str | None = Field(default=None,index=True)
+    idade:int | None = Field(default=None)
+  
+    
+
+class Pessoa(PessoaBase,table=True):
+    id:int | None = Field(default=None,primary_key=True)
+
+class CriarPessoa(PessoaBase):
+    email:EmailStr
+
+
+class PessoaPublica(PessoaBase):
+    id:int
+
+
+
+
+
 
 sql_name = "banco.db"
 sql_file_name = f"sqlite:///{sql_name}"
@@ -27,9 +50,13 @@ app = FastAPI(lifespan=lifespan,title='API')
 SessionDP = Annotated[Session,Depends(get_session)]
 
 
-@app.get("/testando")
-def teste():
-    return {"teste rota"}
+@app.post("/criar/",tags=['Criando usuário'],response_model=PessoaPublica)
+def criar_usuario(pessoa:CriarPessoa,session:SessionDP):
+    validar = Pessoa.model_validate(pessoa)
+    session.add(validar)
+    session.commit()
+    session.refresh(validar)
+    return validar
 
 
 

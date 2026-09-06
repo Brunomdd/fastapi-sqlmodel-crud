@@ -21,6 +21,11 @@ class CriarPessoa(PessoaBase):
 class PessoaPublica(PessoaBase):
     id:int
 
+class PessoaAtualizar(PessoaBase):
+    nome:str | None = None
+    idade: int | None = None
+    email:EmailStr | None = None
+
 
 sql_name = "banco.db"
 sql_file_name = f"sqlite:///{sql_name}"
@@ -38,6 +43,8 @@ def get_session():
 async def lifespan(app:FastAPI):
     create_and_db()
     yield
+
+
 
 
 app = FastAPI(lifespan=lifespan,title='API')
@@ -66,6 +73,27 @@ def buscar_usuario(id_usuario:int,session:SessionDP):
     if not get_usuario:
         raise HTTPException(status_code=404,detail='Usuário não encontrado')
     return get_usuario
+
+@app.patch("/Atualizar/{buscar_id}",response_model=PessoaPublica)
+def atualizar_user(buscar_id:int,session:SessionDP,pessoa:PessoaAtualizar):
+    buscar_usuario = session.get(Pessoa,buscar_id)
+    if not buscar_usuario:
+        raise HTTPException(status_code=404,detail="Usuário não encontrado")
+    pessoa_db = pessoa.model_dump(exclude_unset=True)
+    buscar_usuario.sqlmodel_update(pessoa_db)
+    session.add(buscar_usuario)
+    session.commit()
+    session.refresh(buscar_usuario)
+    return buscar_usuario
+
+
+
+    
+
+    
+
+
+
 
 
 

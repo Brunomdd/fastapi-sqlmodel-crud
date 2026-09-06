@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
-from fastapi import FastAPI,Depends,Query
+from fastapi import FastAPI,Depends,Query,HTTPException
 from sqlmodel import Field,create_engine,Session,SQLModel,select
 from pydantic import EmailStr
 
@@ -42,7 +42,6 @@ async def lifespan(app:FastAPI):
 
 app = FastAPI(lifespan=lifespan,title='API')
 
-
 SessionDP = Annotated[Session,Depends(get_session)]
 
 
@@ -61,8 +60,12 @@ def listar_todos(session:SessionDP,offset:int=0,limit:Annotated[int,Query(le=100
 
 
 
-
-
+@app.get("/buscar/usuario/{id_usuario}",tags=['Buscar usuário'],response_model=PessoaPublica)
+def buscar_usuario(id_usuario:int,session:SessionDP):
+    get_usuario = session.get(Pessoa,id_usuario)
+    if not get_usuario:
+        raise HTTPException(status_code=404,detail='Usuário não encontrado')
+    return get_usuario
 
 
 

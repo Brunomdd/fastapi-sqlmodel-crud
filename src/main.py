@@ -5,8 +5,8 @@ from sqlmodel import Field,create_engine,Session,SQLModel,select
 from pydantic import EmailStr,BaseModel
 
 class PessoaBase(SQLModel):
-    nome:str | None = Field(default=None,index=True)
-    idade:int | None = Field(default=None)
+    nome:str | None = Field(default=None,index=True,min_length=3,max_length=50)
+    idade:int | None = Field(default=None,gt=18,le=120)
     
     
 class Pessoa(PessoaBase,table=True):
@@ -19,7 +19,6 @@ class CriarPessoa(PessoaBase):
 
 class PessoaPublica(PessoaBase):
     id:int
-
 
 
 class PessoaAtualizar(PessoaBase):
@@ -88,7 +87,7 @@ def atualizar_user(buscar_id:int,session:SessionDP,pessoa:PessoaAtualizar):
     session.refresh(buscar_usuario)
     return buscar_usuario
 
-@app.delete("/deletar/usuário/{id_usuario}",tags=['Remover usuário'],response_model=Msg)
+@app.delete("/deletar/usuário/{buscar_id}",tags=['Remover usuário'],response_model=Msg)
 def deletar_user(buscar_id:int,session:SessionDP):
     buscar_usuario = session.get(Pessoa,buscar_id)
     if not buscar_usuario:

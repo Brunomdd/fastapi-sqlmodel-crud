@@ -2,13 +2,12 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import FastAPI,Depends,Query,HTTPException
 from sqlmodel import Field,create_engine,Session,SQLModel,select
-from pydantic import EmailStr
+from pydantic import EmailStr,BaseModel
 
 class PessoaBase(SQLModel):
     nome:str | None = Field(default=None,index=True)
     idade:int | None = Field(default=None)
     
-  
     
 class Pessoa(PessoaBase,table=True):
     id:int | None = Field(default=None,primary_key=True)
@@ -21,11 +20,16 @@ class CriarPessoa(PessoaBase):
 class PessoaPublica(PessoaBase):
     id:int
 
+
+
 class PessoaAtualizar(PessoaBase):
     nome:str | None = None
     idade: int | None = None
     email:EmailStr | None = None
 
+
+class Msg(BaseModel):
+    mensagem:str
 
 sql_name = "banco.db"
 sql_file_name = f"sqlite:///{sql_name}"
@@ -43,8 +47,6 @@ def get_session():
 async def lifespan(app:FastAPI):
     create_and_db()
     yield
-
-
 
 
 app = FastAPI(lifespan=lifespan,title='API')
@@ -74,7 +76,7 @@ def buscar_usuario(id_usuario:int,session:SessionDP):
         raise HTTPException(status_code=404,detail='Usuário não encontrado')
     return get_usuario
 
-@app.patch("/Atualizar/{buscar_id}",response_model=PessoaPublica)
+@app.patch("/Atualizar/{buscar_id}",response_model=PessoaPublica,tags=['Atualizar campos do usuário'])
 def atualizar_user(buscar_id:int,session:SessionDP,pessoa:PessoaAtualizar):
     buscar_usuario = session.get(Pessoa,buscar_id)
     if not buscar_usuario:
@@ -85,6 +87,15 @@ def atualizar_user(buscar_id:int,session:SessionDP,pessoa:PessoaAtualizar):
     session.commit()
     session.refresh(buscar_usuario)
     return buscar_usuario
+
+@app.delete("/deletar/usuário/{id_usuario}",tags=['Remover usuário'],response_model=Msg)
+def deletar_user(buscar_id:int,session:SessionDP):
+    buscar_usuario = session.get(Pessoa,buscar_id)
+    if not buscar_usuario:
+        raise HTTPException(status_code=404,detail='Usuário não encontrado')
+    session.delete(buscar_usuario)
+    session.commit()
+    return Msg(mensagem="Usuário deletado com sucesso!")
 
 
 

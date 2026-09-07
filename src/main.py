@@ -67,7 +67,7 @@ def listar_todos(session:SessionDP,offset:int=0,limit:Annotated[int,Query(le=100
     return pessoas
 
 @app.get("/buscar/nome",response_model=list[PessoaPublica],tags=['Buscar por nome'])
-def buscar_nome_usuario(nome:str,session:SessionDP):
+def buscar_nome_usuario(session:SessionDP,nome:Annotated[str,Query(min_length=3,max_length=50)]):
     statement = select(Pessoa).where(Pessoa.nome == nome)
     resultado = session.exec(statement).all()
     return resultado

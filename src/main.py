@@ -12,19 +12,19 @@ class PessoaBase(SQLModel):
 class Pessoa(PessoaBase,table=True):
     id:int | None = Field(default=None,primary_key=True)
     email:EmailStr
+    
 
 class CriarPessoa(PessoaBase):
     email:EmailStr
-
+    
 
 class PessoaPublica(PessoaBase):
     id:int
 
-
 class PessoaAtualizar(PessoaBase):
-    nome:str | None = None
-    idade: int | None = None
-    email:EmailStr | None = None
+    nome:str | None = Field(min_length=3,max_length=50) 
+    idade: int |None = Field(gt=18,le=120)
+    email:EmailStr 
 
 
 class Msg(BaseModel):
@@ -66,7 +66,11 @@ def listar_todos(session:SessionDP,offset:int=0,limit:Annotated[int,Query(le=100
     pessoas = session.exec(select(Pessoa).offset(offset).limit(limit)).all()
     return pessoas
 
-
+@app.get("/buscar/nome",response_model=list[PessoaPublica],tags=['Buscar por nome'])
+def buscar_nome_usuario(nome:str,session:SessionDP):
+    statement = select(Pessoa).where(Pessoa.nome == nome)
+    resultado = session.exec(statement).all()
+    return resultado
 
 @app.get("/buscar/usuario/{id_usuario}",tags=['Buscar usuário'],response_model=PessoaPublica)
 def buscar_usuario(id_usuario:int,session:SessionDP):

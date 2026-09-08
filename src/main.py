@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
-from fastapi import FastAPI,Depends,Query,HTTPException
+from fastapi import FastAPI,Depends,Query,HTTPException,Path
 from sqlmodel import Field,create_engine,Session,SQLModel,select
 from pydantic import EmailStr,BaseModel
 
@@ -49,7 +49,6 @@ async def lifespan(app:FastAPI):
 
 
 app = FastAPI(lifespan=lifespan,title='API')
-
 SessionDP = Annotated[Session,Depends(get_session)]
 
 
@@ -62,25 +61,35 @@ def criar_usuario(pessoa:CriarPessoa,session:SessionDP):
     return validar
 
 @app.get("/listar/usuarios",tags=['Listar Usuários'],response_model=list[PessoaPublica])
-def listar_todos(session:SessionDP,offset:int=0,limit:Annotated[int,Query(le=100)] = 100):
+def listar_todos(session:SessionDP,
+            offset:int=0,
+            limit:Annotated[int,Query(le=100)] = 100):
     pessoas = session.exec(select(Pessoa).offset(offset).limit(limit)).all()
     return pessoas
 
 @app.get("/buscar/nome",response_model=list[PessoaPublica],tags=['Buscar por nome'])
-def buscar_nome_usuario(session:SessionDP,nome:Annotated[str,Query(min_length=3,max_length=50)]):
+def buscar_nome_usuario(session:SessionDP,
+            nome:Annotated[str,
+            Query(min_length=3,max_length=50)]):
     statement = select(Pessoa).where(Pessoa.nome == nome)
     resultado = session.exec(statement).all()
     return resultado
 
 @app.get("/buscar/usuario/{id_usuario}",tags=['Buscar usuário'],response_model=PessoaPublica)
-def buscar_usuario(id_usuario:int,session:SessionDP):
+def buscar_id_usuario(id_usuario:Annotated[int,
+            Path(title="ID a ser buscado",ge=1)],
+            session:SessionDP):
     get_usuario = session.get(Pessoa,id_usuario)
     if not get_usuario:
         raise HTTPException(status_code=404,detail='Usuário não encontrado')
     return get_usuario
 
-@app.patch("/Atualizar/{buscar_id}",response_model=PessoaPublica,tags=['Atualizar campos do usuário'])
-def atualizar_user(buscar_id:int,session:SessionDP,pessoa:PessoaAtualizar):
+
+
+@app.patch("/atualizar/{buscar_id}",response_model=PessoaPublica,tags=['Atualizar campos do usuário'])
+def atualizar_user(buscar_id:Annotated[int,
+             Path(title="Id do item",ge=1)],
+             session:SessionDP,pessoa:PessoaAtualizar):
     buscar_usuario = session.get(Pessoa,buscar_id)
     if not buscar_usuario:
         raise HTTPException(status_code=404,detail="Usuário não encontrado")

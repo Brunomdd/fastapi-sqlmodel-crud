@@ -24,7 +24,7 @@ class PessoaPublica(PessoaBase):
 class PessoaAtualizar(PessoaBase):
     nome:str | None = Field(min_length=3,max_length=50) 
     idade: int |None = Field(gt=18,le=120)
-    email:EmailStr 
+    email:EmailStr | None = None 
 
 
 class Msg(BaseModel):
@@ -62,7 +62,7 @@ def criar_usuario(pessoa:CriarPessoa,session:SessionDP):
 
 @app.get("/listar/usuarios",tags=['Listar Usuários'],response_model=list[PessoaPublica])
 def listar_todos(session:SessionDP,
-            offset:int=0,
+            offset:Annotated[int,Query(ge=1)],
             limit:Annotated[int,Query(le=100)] = 100):
     pessoas = session.exec(select(Pessoa).offset(offset).limit(limit)).all()
     return pessoas
@@ -84,8 +84,6 @@ def buscar_id_usuario(id_usuario:Annotated[int,
         raise HTTPException(status_code=404,detail='Usuário não encontrado')
     return get_usuario
 
-
-
 @app.patch("/atualizar/{buscar_id}",response_model=PessoaPublica,tags=['Atualizar campos do usuário'])
 def atualizar_user(buscar_id:Annotated[int,
              Path(title="Id do item",ge=1)],
@@ -100,15 +98,15 @@ def atualizar_user(buscar_id:Annotated[int,
     session.refresh(buscar_usuario)
     return buscar_usuario
 
-@app.delete("/deletar/usuário/{buscar_id}",tags=['Remover usuário'],response_model=Msg)
-def deletar_user(buscar_id:int,session:SessionDP):
+@app.delete("/deletar/{buscar_id}",tags=['Remover usuário'],response_model=Msg)
+def deletar_user(buscar_id:Annotated[int,Path(ge=1)],session:SessionDP):
     buscar_usuario = session.get(Pessoa,buscar_id)
     if not buscar_usuario:
         raise HTTPException(status_code=404,detail='Usuário não encontrado')
     session.delete(buscar_usuario)
     session.commit()
     return Msg(mensagem="Usuário deletado com sucesso!")
-
+    
 
 
     

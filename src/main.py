@@ -96,9 +96,7 @@ def atualizar_user(buscar_id:Annotated[int,
     if not buscar_usuario:
         raise HTTPException(status_code=404,detail="Usuário não encontrado")
 
-    #1- não colocar email já registrado no banco ( outro usuário pode estar usando
-    2#- #verificar se o email que o usuario digitou na api é o mesmo que esta no banco de dados e  se o id do usuario é diferente
-    #se for o email esta em uso
+   
     
     pessoa_db = pessoa.model_dump(exclude_unset=True)
     statement = select(Pessoa).where(Pessoa.email== pessoa.email,Pessoa.id != buscar_usuario.id)

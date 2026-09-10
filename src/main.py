@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
+
 from fastapi import FastAPI,Depends,Query,HTTPException,Path
 from sqlmodel import Field,create_engine,Session,SQLModel,select
 from pydantic import EmailStr,BaseModel
@@ -11,7 +12,7 @@ class PessoaBase(SQLModel):
     
 class Pessoa(PessoaBase,table=True):
     id:int | None = Field(default=None,primary_key=True)
-    email:EmailStr
+    email:EmailStr| None = Field(unique=True)
     
 
 class CriarPessoa(PessoaBase):
@@ -22,18 +23,19 @@ class PessoaPublica(PessoaBase):
     id:int
 
 class PessoaAtualizar(PessoaBase):
-    nome:str | None = Field(min_length=3,max_length=50) 
-    idade: int |None = Field(gt=18,le=120)
-    email:EmailStr | None = None 
+    nome:str | None = Field(default=None,min_length=3,max_length=50) 
+    idade: int |None = Field(default=None,gt=18,le=120)
+    email:EmailStr | None = None
 
 
 class Msg(BaseModel):
     mensagem:str
 
 sql_name = "banco.db"
-sql_file_name = f"sqlite:///{sql_name}"
+sql_file_name = f"sqlite:///banco.db"
 connect_args = {"check_same_thread":False}
 engine = create_engine(sql_file_name,connect_args=connect_args)
+
 
 def create_and_db():
     SQLModel.metadata.create_all(engine)
@@ -47,13 +49,15 @@ async def lifespan(app:FastAPI):
     create_and_db()
     yield
 
-
 app = FastAPI(lifespan=lifespan,title='API')
 SessionDP = Annotated[Session,Depends(get_session)]
 
-
 @app.post("/criar/",tags=['Criar usuário'],response_model=PessoaPublica)
 def criar_usuario(pessoa:CriarPessoa,session:SessionDP):
+    statement = select(Pessoa).where(Pessoa.email == pessoa.email)
+    pessoa_existente = session.exec(statement).first()
+    if pessoa_existente:
+        raise HTTPException(status_code=400,detail="esse email ja foi cadastrado!")
     validar = Pessoa.model_validate(pessoa)
     session.add(validar)
     session.commit()
@@ -91,7 +95,18 @@ def atualizar_user(buscar_id:Annotated[int,
     buscar_usuario = session.get(Pessoa,buscar_id)
     if not buscar_usuario:
         raise HTTPException(status_code=404,detail="Usuário não encontrado")
+
+    #1- não colocar email já registrado no banco ( outro usuário pode estar usando
+    2#- #verificar se o email que o usuario digitou na api é o mesmo que esta no banco de dados e  se o id do usuario é diferente
+    #se for o email esta em uso
+    
     pessoa_db = pessoa.model_dump(exclude_unset=True)
+    statement = select(Pessoa).where(Pessoa.email== pessoa.email,Pessoa.id != buscar_usuario.id)
+    pessoa_existente = session.exec(statement).first()
+    if pessoa_existente:
+        raise HTTPException(status_code=400,detail="Email em uso!")
+    
+    
     buscar_usuario.sqlmodel_update(pessoa_db)
     session.add(buscar_usuario)
     session.commit()

@@ -9,6 +9,9 @@ engine = create_engine(sql_file_name,connect_args=connect_args)
 def create_and_db():
     SQLModel.metadata.create_all(engine)
 
+
+
+
 def get_session():
     with Session(engine) as session:
         yield session

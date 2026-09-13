@@ -13,6 +13,7 @@ from src.schemas import (
 )
 
 from src.database import get_session, create_and_db
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_and_db()
@@ -35,7 +36,7 @@ app = FastAPI(lifespan=lifespan,title='API')
 SessionDP = Annotated[Session,Depends(get_session)]
 
 @app.post("/criar/",tags=['Criar usuário'],response_model=PessoaPublica)
-def criar_usuario(pessoa:CriarPessoa,session:SessionDP):
+def criar_usuario(pessoa:CriarPessoa,session:SessionDP): 
     statement = select(Pessoa).where(Pessoa.email == pessoa.email)
     pessoa_existente = session.exec(statement).first()
     if pessoa_existente:
@@ -47,7 +48,7 @@ def criar_usuario(pessoa:CriarPessoa,session:SessionDP):
     return validar
 
 @app.get("/listar/usuarios",tags=['Listar Usuários'],response_model=list[PessoaPublica])
-def listar_todos(session:SessionDP,
+def listar_todos(session:SessionDP, 
             offset:Annotated[int,Query(ge=1)],
             limit:Annotated[int,Query(le=100)] = 100):
     pessoas = session.exec(select(Pessoa).offset(offset).limit(limit)).all()
@@ -78,9 +79,7 @@ def atualizar_user(buscar_id:Annotated[int,
     if not buscar_usuario:
         raise HTTPException(status_code=404,detail="Usuário não encontrado")
 
-    #1- não colocar email já registrado no banco ( outro usuário pode estar usando
-    2#- #verificar se o email que o usuario digitou na api é o mesmo que esta no banco de dados e  se o id do usuario é diferente
-    #se for o email esta em uso
+   
     
     pessoa_db = pessoa.model_dump(exclude_unset=True)
     statement = select(Pessoa).where(Pessoa.email== pessoa.email,Pessoa.id != buscar_usuario.id)

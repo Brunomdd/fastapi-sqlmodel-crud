@@ -31,12 +31,12 @@ SessionDP = Annotated[
 ]
 
 app = FastAPI(lifespan=lifespan,title='API')
-SessionDP = Annotated[Session,Depends(get_session)]
-IdUsuario = Annotated[int,Path(title="Id do item",ge=1)]
+Sessions = Annotated[Session,Depends(get_session)]
+IdUsuario = Annotated[int,Path(title="ID do item",ge=1)]
 NomeUsuario = Annotated[str,Query(min_length=3,max_length=50)]
 
 @app.post("/criar/",tags=['Criar usuário'],response_model=PessoaPublica)
-def criar_usuario(pessoa:CriarPessoa,session:SessionDP): 
+def criar_usuario(pessoa:CriarPessoa,session:Sessions): 
     statement = select(Pessoa).where(Pessoa.email == pessoa.email)
     pessoa_existente = session.exec(statement).first()
     if pessoa_existente:
@@ -55,14 +55,20 @@ def listar_todos(session:SessionDP,
     return pessoas
 
 @app.get("/buscar/nome",response_model=list[PessoaPublica],tags=['Buscar por nome'])
-def buscar_nome_usuario(session:SessionDP,nome:NomeUsuario):
+def buscar_nome_usuario(session:Sessions,nome:NomeUsuario):
     statement = select(Pessoa).where(Pessoa.nome == nome)
     resultado = session.exec(statement).all()
     return resultado
 
+@app.get("/busca/parcial/nome",response_model=list[PessoaPublica],tags=["Busca parcial por nome"])
+def busca_parcial(session:Sessions,nome:str):
+    statement = select(Pessoa).where(Pessoa.nome.contains(nome))
+    pessoas = session.exec(statement)
+    return pessoas
+
 @app.get("/buscar/usuario/{id_usuario}",tags=['Buscar usuário'],response_model=PessoaPublica)
 def buscar_id_usuario(id_usuario:IdUsuario,
-            session:SessionDP):
+            session:Sessions):
     get_usuario = session.get(Pessoa,id_usuario)
     if not get_usuario:
         raise HTTPException(status_code=404,detail='Usuário não encontrado')
@@ -70,7 +76,7 @@ def buscar_id_usuario(id_usuario:IdUsuario,
 
 @app.patch("/atualizar/{buscar_id}",response_model=PessoaPublica,tags=['Atualizar campos do usuário'])
 def atualizar_user(buscar_id:IdUsuario,
-             session:SessionDP,pessoa:PessoaAtualizar):
+             session:Sessions,pessoa:PessoaAtualizar):
     buscar_usuario = session.get(Pessoa,buscar_id)
     if not buscar_usuario:
         raise HTTPException(status_code=404,detail="Usuário não encontrado")
@@ -87,7 +93,7 @@ def atualizar_user(buscar_id:IdUsuario,
     return buscar_usuario
 
 @app.delete("/deletar/{buscar_id}",tags=['Remover usuário'],response_model=Msg)
-def deletar_user(buscar_id:IdUsuario,session:SessionDP):
+def deletar_user(buscar_id:IdUsuario,session:Sessions):
     buscar_usuario = session.get(Pessoa,buscar_id)
     if not buscar_usuario:
         raise HTTPException(status_code=404,detail='Usuário não encontrado')

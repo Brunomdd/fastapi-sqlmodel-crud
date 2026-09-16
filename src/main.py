@@ -25,7 +25,7 @@ SessionDP = Annotated[
 ]
 
 app = FastAPI(lifespan=lifespan,title='API')
-Sessions = Annotated[Session,Depends(get_session)]
+
 IdUsuario = Annotated[int,Path(title="ID do item",ge=1)]
 NomeUsuario = Annotated[str,Query(pattern=r"^[^*!#()%^@]+$",min_length=3,max_length=50)]
 
@@ -49,7 +49,7 @@ def listar_todos(session:SessionDP,
     return pessoas
 
 @app.get("/usuarios/nome",response_model=list[PessoaPublica],tags=['Buscar por nome'])
-def buscar_nome_usuario(session:Sessions,nome:NomeUsuario):
+def buscar_nome_usuario(session:SessionDP,nome:NomeUsuario):
     statement = select(Pessoa).where(Pessoa.nome == nome)
     resultado = session.exec(statement).all()
     return resultado
@@ -72,7 +72,7 @@ def buscar_id_usuario(id_usuario:IdUsuario,
 
 @app.patch("/usuarios/{buscar_id}",response_model=PessoaPublica,tags=['Atualizar campos do usuário'])
 def atualizar_user(buscar_id:IdUsuario,
-             session:Sessions,pessoa:PessoaAtualizar):
+             session:Session,pessoa:PessoaAtualizar):
     buscar_usuario = session.get(Pessoa,buscar_id)
     if not buscar_usuario:
         raise HTTPException(status_code=404,detail="Usuário não encontrado")

@@ -72,16 +72,18 @@ def buscar_id_usuario(id_usuario:IdUsuario,
 
 @app.patch("/usuarios/{buscar_id}",response_model=PessoaPublica,tags=['Atualizar campos do usuário'])
 def atualizar_user(buscar_id:IdUsuario,
-             session:Session,pessoa:PessoaAtualizar):
+             session:SessionDP,pessoa:PessoaAtualizar):
     buscar_usuario = session.get(Pessoa,buscar_id)
     if not buscar_usuario:
         raise HTTPException(status_code=404,detail="Usuário não encontrado")
     pessoa_db = pessoa.model_dump(exclude_unset=True)
-    if "email" in pessoa_db and pessoa.email is not None:
-        statement = select(Pessoa).where(Pessoa.email== pessoa.email,Pessoa.id != buscar_usuario.id)
-        pessoa_existente = session.exec(statement).first()
-        if pessoa_existente:
-            raise HTTPException(status_code=409,detail="Email em uso!")
+    if "email" in pessoa_db:
+        novo_email = pessoa.email
+        if novo_email is not None and novo_email != buscar_usuario.email:
+            statement = select(Pessoa).where(Pessoa.email == novo_email, Pessoa.id != buscar_usuario.id)
+            pessoa_existente = session.exec(statement).first()
+            if pessoa_existente:
+                raise HTTPException(status_code=409,detail="Email em uso!")
     buscar_usuario.sqlmodel_update(pessoa_db)
     session.add(buscar_usuario)
     session.commit()

@@ -42,25 +42,22 @@ def criar_usuario(pessoa:CriarPessoa,session:SessionDP):
     return validar
 
 @app.get("/usuarios/listar",tags=['Listar Usuários'],response_model=list[PessoaPublica])
-def listar_todos(session:SessionDP, 
+def listar_todos(session:SessionDP,nome:NomeUsuario | None = None ,nome_parcial:NomeUsuario | None =  None, 
             offset:Annotated[int,Query(ge=0)] = 0,
             limit:Annotated[int,Query(le=100)] = 100):
-    pessoas = session.exec(select(Pessoa).offset(offset).limit(limit)).all()
-    return pessoas
-
-@app.get("/usuarios/nome",response_model=list[PessoaPublica],tags=['Buscar por nome'])
-def buscar_nome_usuario(session:SessionDP,nome:NomeUsuario):
-    statement = select(Pessoa).where(Pessoa.nome == nome)
-    resultado = session.exec(statement).all()
-    return resultado
-
-@app.get("/usuarios/buscar/parcial",response_model=list[PessoaPublica],tags=["Busca parcial por nome"])
-def busca_parcial(session:SessionDP
-                  ,nome:NomeUsuario,offset:Annotated[int,Query(ge=0)] = 0,
-                  limit:Annotated[int,Query(le=100)]=100):
-    statement = select(Pessoa).where(Pessoa.nome.contains(nome)).offset(offset).limit(limit)
-    resultado = session.exec(statement).all()
-    return resultado
+    if nome:
+        statement = select(Pessoa).where(Pessoa.nome == nome).offset(offset).limit(limit)
+        resultado = session.exec(statement).all()
+        return resultado
+    elif nome_parcial:
+        statement = select(Pessoa).where(Pessoa.nome_parcial.contains(nome.parcial)).offset(offset).limit(limit)
+        resultado = session.exec(statement).all()
+        return resultado
+    else:
+        statement = select(Pessoa).offset(offset).limit(limit)
+        resultado = session.exec(statement).all()
+        return resultado
+    
 
 @app.get("/usuarios/{id_usuario}",tags=['Buscar usuário'],response_model=PessoaPublica)
 def buscar_id_usuario(id_usuario:IdUsuario,
@@ -84,6 +81,7 @@ def atualizar_user(buscar_id:IdUsuario,
             pessoa_existente = session.exec(statement).first()
             if pessoa_existente:
                 raise HTTPException(status_code=409,detail="Email em uso!")
+            
     buscar_usuario.sqlmodel_update(pessoa_db)
     session.add(buscar_usuario)
     session.commit()

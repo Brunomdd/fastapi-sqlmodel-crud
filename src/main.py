@@ -1,8 +1,12 @@
+import jwt
 from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Depends, Path, Query
+from pwdlib import PasswordHash
 from sqlmodel import Session, select
+
+from pwdlib import  PasswordHash
 
 from src.schemas import (
     CriarPessoa,
@@ -24,24 +28,29 @@ SessionDP = Annotated[
     Depends(get_session)
 ]
 
+
+password_hash = PasswordHash.recommended()
 app = FastAPI(lifespan=lifespan,title='API')
 
 IdUsuario = Annotated[int,Path(title="ID do item",ge=1)]
 NomeUsuario = Annotated[str,Query(pattern=r"^[^*!#()%^@]+$",min_length=3,max_length=50)]
 
-@app.post("/usuarios",tags=['Criar usuário'],response_model=PessoaPublica)
+@app.post("/usuarios",tags=['Usuários - Criar'],response_model=PessoaPublica)
 def criar_usuario(pessoa:CriarPessoa,session:SessionDP): 
     statement = select(Pessoa).where(Pessoa.email == pessoa.email)
     pessoa_existente = session.exec(statement).first()
     if pessoa_existente:
         raise HTTPException(status_code=409,detail="Esse email já foi cadastrado")
-    validar = Pessoa.model_validate(pessoa)
-    session.add(validar)
+    senha_hash = password_hash.hash(pessoa.senha)
+    dados = pessoa.model_dump()
+    dados["senha"] = senha_hash
+    nova_pessoa = Pessoa.model_validate(dados)
+    session.add(nova_pessoa)
     session.commit()
-    session.refresh(validar)
-    return validar
+    session.refresh(nova_pessoa)
+    return nova_pessoa
 
-@app.get("/usuarios",tags=['Listar usuários'],response_model=list[PessoaPublica])
+@app.get("/usuarios",tags=['Usuários - Listar'],response_model=list[PessoaPublica])
 def listagem_usuarios(session:SessionDP,nome:NomeUsuario | None = None ,nome_parcial:NomeUsuario | None =  None, 
             offset:Annotated[int,Query(ge=0)] = 0,
             limit:Annotated[int,Query(le=100)] = 100):
@@ -59,7 +68,7 @@ def listagem_usuarios(session:SessionDP,nome:NomeUsuario | None = None ,nome_par
         return resultado
     
 
-@app.get("/usuarios/{id_usuario}",tags=['Buscar ID usuário'],response_model=PessoaPublica)
+@app.get("/usuarios/{id_usuario}",tags=['Usuários - buscar'],response_model=PessoaPublica)
 def buscar_id(usuario_id:IdUsuario,
             session:SessionDP):
     get_usuario = session.get(Pessoa,usuario_id)
@@ -67,7 +76,7 @@ def buscar_id(usuario_id:IdUsuario,
         raise HTTPException(status_code=404,detail='Usuário não encontrado')
     return get_usuario
 
-@app.patch("/usuarios/{usuario_id}",response_model=PessoaPublica,tags=['Atualizar campos do usuário'])
+@app.patch("/usuarios/{id_usuario}",response_model=PessoaPublica,tags=['Usuários - Atualizar'])
 def atualizar_usuario(usuario_id:IdUsuario,
              session:SessionDP,pessoa:PessoaAtualizar):
     buscar_usuario = session.get(Pessoa,usuario_id)
@@ -88,7 +97,7 @@ def atualizar_usuario(usuario_id:IdUsuario,
     session.refresh(buscar_usuario)
     return buscar_usuario
 
-@app.delete("/usuarios/{buscar_id}",tags=['Remover usuário'],response_model=Msg)
+@app.delete("/usuarios/{id_usuario}",tags=['Usuários - Remover'],response_model=Msg)
 def deletar_usuario(usuario_id:IdUsuario,session:SessionDP):
     buscar_usuario = session.get(Pessoa,usuario_id)
     if not buscar_usuario:
